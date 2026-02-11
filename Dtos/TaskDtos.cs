@@ -15,10 +15,10 @@ public record TaskCreateDto(
 public record TaskUpdateDto(
     string? Title,
     string? Description,
+    TaskStatusEnum? Status,
     TaskPriorityEnum? Priority,
     DateTime? DueDate,
-    Guid? AssigneeId,
-    TaskStatusEnum? Status
+    Guid? AssigneeId
 );
 
 

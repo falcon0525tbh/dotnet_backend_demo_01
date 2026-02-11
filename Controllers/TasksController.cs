@@ -93,7 +93,26 @@ public class TasksController : ControllerBase
         } else {
             query = query.OrderBy(t => t.CreatedAt);
         }
-        var list = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var list = await query.Select(t => new {
+            t.Id,
+            t.Title,
+            t.Description,
+            t.Status,
+            t.Priority,
+            t.DueDate,
+            t.AssigneeId,
+            AssigneeName = _db.Users
+                .Where(u => u.Id == t.AssigneeId)
+                .Select(u => u.UserName)
+                .FirstOrDefault(),
+            t.CreatedBy,
+            CreatedByName = _db.Users
+                .Where(u => u.Id == t.CreatedBy)
+                .Select(u => u.UserName)
+                .FirstOrDefault(),
+            t.CreatedAt,
+            t.UpdatedAt
+        }).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
         return Ok(new { list, page, pageSize });
     }
@@ -166,7 +185,30 @@ public class TasksController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var task = await _db.Tasks.FindAsync(id);
+        var task = await _db.Tasks
+            .Where(t => t.Id == id)
+            .Select(t => new
+            {
+                t.Id,
+                t.Title,
+                t.Description,
+                t.Status,
+                t.Priority,
+                t.DueDate,
+                t.AssigneeId,
+                AssigneeName = _db.Users
+                    .Where(u => u.Id == t.AssigneeId)
+                    .Select(u => u.UserName)
+                    .FirstOrDefault(),
+                t.CreatedBy,
+                CreatedByName = _db.Users
+                    .Where(u => u.Id == t.CreatedBy)
+                    .Select(u => u.UserName)
+                    .FirstOrDefault(),
+                t.CreatedAt,
+                t.UpdatedAt
+            })
+        .FirstOrDefaultAsync();
         if (task == null)
         {
             return NotFound();
@@ -222,6 +264,10 @@ public class TasksController : ControllerBase
         if (dto.Description != null)
         {
             task.Description = dto.Description;
+        }
+        if (dto.Status.HasValue)
+        {
+            task.Status = dto.Status.Value;
         }
         if (dto.Priority.HasValue)
         {
