@@ -59,6 +59,73 @@ namespace TaskHub.Api.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Tasks");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000001"),
+                            AssigneeId = new Guid("00000000-0000-0000-0000-000000000001"),
+                            CreatedAt = new DateTime(2026, 2, 11, 4, 27, 7, 158, DateTimeKind.Utc).AddTicks(7666),
+                            CreatedBy = new Guid("00000000-0000-0000-0000-000000000001"),
+                            Description = "ChongHsien Task Description",
+                            DueDate = new DateTime(2026, 2, 18, 4, 27, 7, 158, DateTimeKind.Utc).AddTicks(7658),
+                            Priority = 0,
+                            Status = 0,
+                            Title = "ChongHsien Task",
+                            UpdatedAt = new DateTime(2026, 2, 11, 4, 27, 7, 158, DateTimeKind.Utc).AddTicks(7666)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000002"),
+                            AssigneeId = new Guid("00000000-0000-0000-0000-000000000002"),
+                            CreatedAt = new DateTime(2026, 2, 11, 4, 27, 7, 158, DateTimeKind.Utc).AddTicks(7675),
+                            CreatedBy = new Guid("00000000-0000-0000-0000-000000000002"),
+                            Description = "YeeChian Task Description",
+                            DueDate = new DateTime(2026, 2, 19, 4, 27, 7, 158, DateTimeKind.Utc).AddTicks(7674),
+                            Priority = 1,
+                            Status = 1,
+                            Title = "YeeChian Task",
+                            UpdatedAt = new DateTime(2026, 2, 11, 4, 27, 7, 158, DateTimeKind.Utc).AddTicks(7676)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000003"),
+                            AssigneeId = new Guid("00000000-0000-0000-0000-000000000003"),
+                            CreatedAt = new DateTime(2026, 2, 11, 4, 27, 7, 158, DateTimeKind.Utc).AddTicks(7682),
+                            CreatedBy = new Guid("00000000-0000-0000-0000-000000000003"),
+                            Description = "Falcon Task Description",
+                            DueDate = new DateTime(2026, 2, 20, 4, 27, 7, 158, DateTimeKind.Utc).AddTicks(7682),
+                            Priority = 2,
+                            Status = 2,
+                            Title = "Falcon Task",
+                            UpdatedAt = new DateTime(2026, 2, 11, 4, 27, 7, 158, DateTimeKind.Utc).AddTicks(7683)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000004"),
+                            AssigneeId = new Guid("00000000-0000-0000-0000-000000000003"),
+                            CreatedAt = new DateTime(2026, 2, 11, 4, 27, 7, 158, DateTimeKind.Utc).AddTicks(7692),
+                            CreatedBy = new Guid("00000000-0000-0000-0000-000000000001"),
+                            Description = "ChongHsien toFalcon Task Description",
+                            DueDate = new DateTime(2026, 2, 21, 4, 27, 7, 158, DateTimeKind.Utc).AddTicks(7691),
+                            Priority = 0,
+                            Status = 4,
+                            Title = "ChongHsien to Falcon Task",
+                            UpdatedAt = new DateTime(2026, 2, 11, 4, 27, 7, 158, DateTimeKind.Utc).AddTicks(7693)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000005"),
+                            AssigneeId = new Guid("00000000-0000-0000-0000-000000000003"),
+                            CreatedAt = new DateTime(2026, 2, 11, 4, 27, 7, 158, DateTimeKind.Utc).AddTicks(7701),
+                            CreatedBy = new Guid("00000000-0000-0000-0000-000000000002"),
+                            Description = "YeeChian Task Description",
+                            DueDate = new DateTime(2026, 2, 22, 4, 27, 7, 158, DateTimeKind.Utc).AddTicks(7700),
+                            Priority = 2,
+                            Status = 3,
+                            Title = "YeeChian to Falcon Task",
+                            UpdatedAt = new DateTime(2026, 2, 11, 4, 27, 7, 158, DateTimeKind.Utc).AddTicks(7701)
+                        });
                 });
 
             modelBuilder.Entity("TaskHub.Api.Models.User", b =>
@@ -84,6 +151,32 @@ namespace TaskHub.Api.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Users");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000001"),
+                            CreatedAt = new DateTime(2026, 2, 11, 4, 27, 7, 158, DateTimeKind.Utc).AddTicks(7281),
+                            PasswordHash = "ChongHsien",
+                            Role = 0,
+                            UserName = "ChongHsien"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000002"),
+                            CreatedAt = new DateTime(2026, 2, 11, 4, 27, 7, 158, DateTimeKind.Utc).AddTicks(7300),
+                            PasswordHash = "YeeChian",
+                            Role = 1,
+                            UserName = "YeeChian"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000003"),
+                            CreatedAt = new DateTime(2026, 2, 11, 4, 27, 7, 158, DateTimeKind.Utc).AddTicks(7305),
+                            PasswordHash = "Falcon",
+                            Role = 2,
+                            UserName = "Falcon"
+                        });
                 });
 #pragma warning restore 612, 618
         }
