@@ -9,7 +9,8 @@ public record TaskCreateDto(
     string? Description,
     TaskPriorityEnum Priority,
     DateTime DueDate,
-    Guid AssigneeId
+    Guid AssigneeId,
+    Guid? ProjectId
 );
 
 public record TaskUpdateDto(
@@ -18,7 +19,8 @@ public record TaskUpdateDto(
     TaskStatusEnum? Status,
     TaskPriorityEnum? Priority,
     DateTime? DueDate,
-    Guid? AssigneeId
+    Guid? AssigneeId,
+    Guid? ProjectId
 );
 
 

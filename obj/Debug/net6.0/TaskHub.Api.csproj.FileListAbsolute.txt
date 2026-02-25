@@ -82,3 +82,5 @@ C:\Users\happy\backend\TaskHub.Api\obj\Debug\net6.0\refint\TaskHub.Api.dll
 C:\Users\happy\backend\TaskHub.Api\obj\Debug\net6.0\TaskHub.Api.pdb
 C:\Users\happy\backend\TaskHub.Api\obj\Debug\net6.0\TaskHub.Api.genruntimeconfig.cache
 C:\Users\happy\backend\TaskHub.Api\obj\Debug\net6.0\ref\TaskHub.Api.dll
+C:\Users\happy\backend\TaskHub.Api\bin\Debug\net6.0\frontend\package-lock.json
+C:\Users\happy\backend\TaskHub.Api\bin\Debug\net6.0\frontend\package.json

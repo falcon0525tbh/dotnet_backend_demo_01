@@ -14,7 +14,7 @@ builder.Services.AddControllers();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("DevClient", policy =>
-        policy.WithOrigins("http://localhost:19006", "http://10.0.2.2:19006")
+        policy.WithOrigins("http://localhost:5173", "http://localhost:19006", "http://10.0.2.2:19006")
               .AllowAnyHeader()
               .AllowAnyMethod());
 });
@@ -33,7 +33,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
         };
     });
-    
+
 builder.Services.AddAuthorization();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -77,7 +77,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("DevClient");
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

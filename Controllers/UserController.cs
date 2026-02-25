@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using TaskHub.Api.Data;
 using TaskHub.Api.Models;
 using TaskHub.Api.Enums;
-using TaskHub.Api.Dtos; 
+using TaskHub.Api.Dtos;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
 namespace TaskHub.Api.Controllers;
@@ -24,11 +24,11 @@ public class UserController : ControllerBase
 
     private Guid GetUserId()
     {
-        var id = User.FindFirstValue(ClaimTypes.NameIdentifier)?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        var id = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
 
-        if(string.IsNullOrEmpty(id))
+        if (string.IsNullOrEmpty(id))
         {
-            throw  new UnauthorizedAccessException("User ID not found in token");
+            throw new UnauthorizedAccessException("User ID not found in token");
         }
         return Guid.Parse(id);
     }
@@ -36,7 +36,7 @@ public class UserController : ControllerBase
     private Role GetUserRole()
     {
         var roleStr = User.FindFirstValue(ClaimTypes.Role);
-        if(Enum.TryParse<Role>(roleStr, out var role))
+        if (Enum.TryParse<Role>(roleStr, out var role))
         {
             return role;
         }
@@ -46,39 +46,85 @@ public class UserController : ControllerBase
     [HttpGet("users")]
     public async Task<IActionResult> GetUsers()
     {
-        
+
         var query = _db.Users.AsQueryable();
 
         var userRole = GetUserRole();
-        if(userRole == Role.CEO)
+        if (userRole == Role.CEO)
         {
-            
+
         }
-        else if(userRole == Role.Manager)
+        else if (userRole == Role.Manager)
         {
             var userId = GetUserId();
             var teamMemberIds = await _db.Users
                 .Where(u => u.Role == Role.Worker)
                 .Select(u => u.Id)
                 .ToListAsync();
-            teamMemberIds.Add(userId); 
+            teamMemberIds.Add(userId);
             query = query.Where(t => teamMemberIds.Contains(t.Id));
-        } else if(userRole == Role.Worker)
+        }
+        else if (userRole == Role.Worker)
         {
             var userId = GetUserId();
-            query = query.Where(t => t.Id ==  userId);
+            query = query.Where(t => t.Id == userId);
         }
-        
+
         var users = await query
-            .Select(u => new 
+            .Select(u => new
             {
                 u.Id,
                 u.UserName,
+                u.PasswordHash,
+                u.Active,
                 u.CreatedAt,
                 u.Role
             })
             .ToListAsync();
 
         return Ok(users);
+    }
+
+    [HttpPost("create")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Create(UserCreateDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.UserName)) return BadRequest("UserName is required");
+        if (string.IsNullOrWhiteSpace(dto.Password)) return BadRequest("Password is required");
+        if (!Enum.IsDefined(typeof(Role), dto.Role)) return BadRequest("Invalid role");
+
+        var exists = await _db.Users.AnyAsync(u => u.UserName == dto.UserName);
+        if (exists) return Conflict("UserName already exists");
+
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            UserName = dto.UserName,
+            PasswordHash = dto.Password,
+            Role = (Role)dto.Role,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
+        return Ok(new UserResponse(user.Id, user.UserName, (int)user.Role, user.CreatedAt, user.Active));
+    }
+
+    [HttpPatch("update")]
+    public async Task<IActionResult> Update(UserUpdateDto dto)
+    {
+        var user = await _db.Users.FindAsync(dto.Id);
+        if (user == null) return NotFound("User not found");
+
+        if (dto.UserName != null) user.UserName = dto.UserName;
+        if (dto.Password != null) user.PasswordHash = dto.Password;
+        if (dto.Role.HasValue) user.Role = (Role)dto.Role.Value;
+        if (dto.Active.HasValue) user.Active = dto.Active.Value;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new UserResponse(user.Id, user.UserName, (int)user.Role, user.CreatedAt, user.Active));
     }
 }

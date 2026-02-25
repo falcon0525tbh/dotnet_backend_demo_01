@@ -6,7 +6,7 @@ using TaskHub.Api.Models;
 using TaskHub.Api.Enums;
 using TaskStatusEnum = TaskHub.Api.Enums.TaskStatus;
 using TaskPriorityEnum = TaskHub.Api.Enums.TaskPriority;
-using TaskHub.Api.Dtos; 
+using TaskHub.Api.Dtos;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
 namespace TaskHub.Api.Controllers;
@@ -26,11 +26,11 @@ public class TasksController : ControllerBase
 
     private Guid GetUserId()
     {
-        var id = User.FindFirstValue(ClaimTypes.NameIdentifier)?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        var id = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
 
-        if(string.IsNullOrEmpty(id))
+        if (string.IsNullOrEmpty(id))
         {
-            throw  new UnauthorizedAccessException("User ID not found in token");
+            throw new UnauthorizedAccessException("User ID not found in token");
         }
         return Guid.Parse(id);
     }
@@ -38,7 +38,7 @@ public class TasksController : ControllerBase
     private Role GetUserRole()
     {
         var roleStr = User.FindFirstValue(ClaimTypes.Role);
-        if(Enum.TryParse<Role>(roleStr, out var role))
+        if (Enum.TryParse<Role>(roleStr, out var role))
         {
             return role;
         }
@@ -49,14 +49,128 @@ public class TasksController : ControllerBase
     public async Task<IActionResult> GetDashboard()
     {
         var userId = GetUserId();
-        int totalTasks = await _db.Tasks.CountAsync(t => t.AssigneeId == userId);
-        int completedTasks = await _db.Tasks.CountAsync(t => t.AssigneeId == userId && t.Status == TaskStatusEnum.Completed);
-        int pendingTasks = await _db.Tasks.CountAsync(t => t.AssigneeId == userId && t.Status != TaskStatusEnum.Completed);
-        var allTasksList = await _db.Tasks.Where(t => t.AssigneeId == userId).ToListAsync();
+        var userRole = GetUserRole();
+
+        var query = _db.Tasks.AsQueryable();
+
+        if (userRole == Role.Admin)
+        {
+            // admins see everything
+        }
+        else if (userRole == Role.Manager)
+        {
+            var teamIds = await _db.Users
+                .Where(u => u.Role == Role.Worker)
+                .Select(u => u.Id)
+                .ToListAsync();
+            teamIds.Add(userId);
+            query = query.Where(t => teamIds.Contains(t.AssigneeId));
+        }
+        else if (userRole == Role.Worker)
+        {
+            query = query.Where(t => t.AssigneeId == userId);
+        }
+
+        int totalTasks = await query.CountAsync();
+        int completedTasks = await query.CountAsync(t => t.Status == TaskStatusEnum.Completed);
+        int pendingTasks = await query.CountAsync(t => t.Status != TaskStatusEnum.Completed);
+
+        var allTasksList = await query
+            .Select(t => new
+            {
+                t.Id,
+                t.Title,
+                t.Description,
+                t.Status,
+                t.Priority,
+                t.DueDate,
+                t.AssigneeId,
+                t.ProjectId,
+                ProjectName = _db.Projects
+                    .Where(p => p.Id == t.ProjectId)
+                    .Select(p => p.Name)
+                    .FirstOrDefault(),
+                ProjectDescription = _db.Projects
+                    .Where(p => p.Id == t.ProjectId)
+                    .Select(p => p.Description)
+                    .FirstOrDefault(),
+                AssigneeName = _db.Users
+                    .Where(u => u.Id == t.AssigneeId)
+                    .Select(u => u.UserName)
+                    .FirstOrDefault(),
+                t.CreatedBy,
+                CreatedByName = _db.Users
+                    .Where(u => u.Id == t.CreatedBy)
+                    .Select(u => u.UserName)
+                    .FirstOrDefault(),
+                t.CreatedAt,
+                t.UpdatedAt
+            })
+            .ToListAsync();
         var completedTasksList = allTasksList.Where(t => t.Status == TaskStatusEnum.Completed).ToList();
         var pendingTasksList = allTasksList.Where(t => t.Status != TaskStatusEnum.Completed).ToList();
 
-        return Ok(new { totalTasks, completedTasks, pendingTasks, allTasksList , completedTasksList, pendingTasksList });
+        return Ok(new { totalTasks, completedTasks, pendingTasks, allTasksList, completedTasksList, pendingTasksList });
+    }
+
+    [HttpGet("dashboard/top")]
+    public async Task<IActionResult> GetTopTasks()
+    {
+        var userId = GetUserId();
+        var userRole = GetUserRole();
+
+        IQueryable<TaskItem> query = _db.Tasks;
+
+        if (userRole == Role.Manager)
+        {
+            var teamIds = await _db.Users
+                .Where(u => u.Role == Role.Worker)
+                .Select(u => u.Id)
+                .ToListAsync();
+            teamIds.Add(userId);
+            query = query.Where(t => teamIds.Contains(t.AssigneeId));
+        }
+        else if (userRole == Role.Worker)
+        {
+            query = query.Where(t => t.AssigneeId == userId);
+        }
+
+        var top = await query
+            .OrderBy(t => t.Priority)
+            .ThenBy(t => t.DueDate)
+            .ThenBy(t => t.CreatedAt)
+            .Take(5)
+            .Select(t => new
+            {
+                t.Id,
+                t.Title,
+                t.Description,
+                t.Priority,
+                t.Status,
+                t.DueDate,
+                t.ProjectId,
+                t.AssigneeId,
+                AssigneeName = _db.Users
+                    .Where(u => u.Id == t.AssigneeId)
+                    .Select(u => u.UserName)
+                    .FirstOrDefault(),
+                t.CreatedBy,
+                CreatedByName = _db.Users
+                    .Where(u => u.Id == t.CreatedBy)
+                    .Select(u => u.UserName)
+                    .FirstOrDefault(),
+                ProjectName = _db.Projects
+                    .Where(p => p.Id == t.ProjectId)
+                    .Select(p => p.Name)
+                    .FirstOrDefault(),
+                ProjectDescription = _db.Projects
+                    .Where(p => p.Id == t.ProjectId)
+                    .Select(p => p.Description)
+                    .FirstOrDefault()
+            })
+            .ToListAsync();
+
+        return Ok(top);
     }
 
     [HttpGet("all")]
@@ -66,34 +180,39 @@ public class TasksController : ControllerBase
         [FromQuery] int pageSize = 10
     )
     {
-        var query =  _db.Tasks.AsQueryable();
+        var query = _db.Tasks.AsQueryable();
 
         var userRole = GetUserRole();
-        if(userRole == Role.CEO)
+        if (userRole == Role.CEO)
         {
-            
+
         }
-        else if(userRole == Role.Manager)
+        else if (userRole == Role.Manager)
         {
             var userId = GetUserId();
             var teamMemberIds = await _db.Users
                 .Where(u => u.Role == Role.Worker)
                 .Select(u => u.Id)
                 .ToListAsync();
-            teamMemberIds.Add(userId); 
+            teamMemberIds.Add(userId);
             query = query.Where(t => teamMemberIds.Contains(t.AssigneeId));
-        } else if(userRole == Role.Worker)
+        }
+        else if (userRole == Role.Worker)
         {
             var userId = GetUserId();
-            query = query.Where(t => t.AssigneeId ==  userId);
+            query = query.Where(t => t.AssigneeId == userId);
         }
 
-        if(orderByDesc){
+        if (orderByDesc)
+        {
             query = query.OrderByDescending(t => t.CreatedAt);
-        } else {
+        }
+        else
+        {
             query = query.OrderBy(t => t.CreatedAt);
         }
-        var list = await query.Select(t => new {
+        var list = await query.Select(t => new
+        {
             t.Id,
             t.Title,
             t.Description,
@@ -127,28 +246,29 @@ public class TasksController : ControllerBase
         [FromQuery] int pageSize = 10,
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null
-    ) 
+    )
     {
         var query = _db.Tasks.AsQueryable();
 
         var userRole = GetUserRole();
-        if(userRole == Role.CEO)
+        if (userRole == Role.CEO)
         {
-            
+
         }
-        else if(userRole == Role.Manager)
+        else if (userRole == Role.Manager)
         {
             var userId = GetUserId();
             var teamMemberIds = await _db.Users
                 .Where(u => u.Role == Role.Worker)
                 .Select(u => u.Id)
                 .ToListAsync();
-            teamMemberIds.Add(userId); 
+            teamMemberIds.Add(userId);
             query = query.Where(t => teamMemberIds.Contains(t.AssigneeId));
-        } else if(userRole == Role.Worker)
+        }
+        else if (userRole == Role.Worker)
         {
             var userId = GetUserId();
-            query = query.Where(t => t.AssigneeId ==  userId);
+            query = query.Where(t => t.AssigneeId == userId);
         }
 
         if (assigneeId.HasValue)
@@ -163,17 +283,17 @@ public class TasksController : ControllerBase
         {
             query = query.Where(t => t.Priority == priority.Value);
         }
-        if (!string.IsNullOrEmpty(search ))
+        if (!string.IsNullOrEmpty(search))
         {
-            query = query.Where(t => 
-                t.Title.Contains(search ) 
+            query = query.Where(t =>
+                t.Title.Contains(search)
                 || (t.Description != null && t.Description.Contains(search)));
         }
-        if(startDate.HasValue)
+        if (startDate.HasValue)
         {
             query = query.Where(t => t.CreatedAt >= startDate.Value);
         }
-        if(endDate.HasValue)
+        if (endDate.HasValue)
         {
             query = query.Where(t => t.CreatedAt <= endDate.Value);
         }
@@ -220,13 +340,13 @@ public class TasksController : ControllerBase
     [HttpPost("create")]
     public async Task<IActionResult> Create(TaskCreateDto dto)
     {
-        if(string.IsNullOrEmpty(dto.Title))
+        if (string.IsNullOrEmpty(dto.Title))
         {
-                return BadRequest("Title cannot be empty");
+            return BadRequest("Title cannot be empty");
         }
-        if(dto.DueDate < DateTime.UtcNow)
+        if (dto.DueDate < DateTime.UtcNow)
         {
-                return BadRequest("Due date cannot be in the past");
+            return BadRequest("Due date cannot be in the past");
         }
         var userId = GetUserId();
         var task = new TaskItem
@@ -236,6 +356,7 @@ public class TasksController : ControllerBase
             Priority = dto.Priority,
             DueDate = dto.DueDate,
             AssigneeId = dto.AssigneeId,
+            ProjectId = dto.ProjectId,
             CreatedBy = userId,
             UpdatedAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
@@ -273,9 +394,13 @@ public class TasksController : ControllerBase
         {
             task.Priority = dto.Priority.Value;
         }
+        if (dto.ProjectId.HasValue)
+        {
+            task.ProjectId = dto.ProjectId.Value;
+        }
         if (dto.DueDate.HasValue)
         {
-            if(dto.DueDate.Value < DateTime.UtcNow)
+            if (dto.DueDate.Value < DateTime.UtcNow)
             {
                 return BadRequest("Due date cannot be in the past");
             }
@@ -312,9 +437,20 @@ public class TasksController : ControllerBase
     public async Task<IActionResult> Delete(Guid id)
     {
         var task = await _db.Tasks.FindAsync(id);
+
+
         if (task == null)
         {
             return NotFound();
+        }
+        var userId = GetUserId();
+        var role = GetUserRole();
+        var isOwner = task.CreatedBy == userId;
+        var isAdmin = role == Role.Admin || role == Role.Manager;
+        // if (!isOwner && !isAdmin){
+        if (!isOwner)
+        {
+            return Forbid();
         }
 
         _db.Tasks.Remove(task);

@@ -4,15 +4,15 @@ using System.Text;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
-using Microsoft.IdentityModel.Tokens; 
+using Microsoft.IdentityModel.Tokens;
 using TaskHub.Api.Data;
 using TaskHub.Api.Models;
-using TaskHub.Api.Contracts; 
+using TaskHub.Api.Contracts;
 
 namespace TaskHub.Api.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
     private readonly TaskHubDbContext _db;
@@ -38,7 +38,7 @@ public class AuthController : ControllerBase
         var user = await _db.Users.SingleOrDefaultAsync(u => u.UserName == req.UserName);
         // var passwordHash = HashPassword(req.Password);
         // if(user == null || user.PasswordHash != passwordHash)
-        if(user == null || req.Password != user.PasswordHash)
+        if (user == null || req.Password != user.PasswordHash)
         {
             return Unauthorized();
         }
